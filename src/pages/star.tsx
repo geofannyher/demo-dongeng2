@@ -136,7 +136,7 @@ const Star = () => {
     BackgroundAudio.current = new Audio(
       "https://res.cloudinary.com/dcd1jeldi/video/upload/v1730121772/demo-dongeng-bg-music.mp3"
     );
-    BackgroundAudio.current.volume = 0.1;
+    BackgroundAudio.current.volume = 0.2;
     BackgroundAudio.current.loop = true;
 
     const startBackgroundAudio = () => {
