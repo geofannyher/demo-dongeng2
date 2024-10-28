@@ -20,7 +20,12 @@ const TypewriterEffect = ({ text }: any) => {
     return () => clearInterval(intervalId);
   }, [text]);
 
-  return <span className="text-white">{displayedText}</span>;
+  return (
+    <div className="text-white">
+      <div dangerouslySetInnerHTML={{ __html: displayedText }} />
+    </div>
+  );
+  // <span className="text-white">{displayedText}</span>;
 };
 
 export default TypewriterEffect;

@@ -76,8 +76,11 @@ const Star = () => {
     setResults([
       {
         id: 231313,
-        result:
-          "Selamat datang, Sobat Mantap! Perkenalkan saya Ibu Dewi dari Bank Mandiri Taspen. Ada yang bisa Ibu bantu hari ini?",
+        result: `<p>Hai aku Owdi, aku punya beberapa cerita horor nih untuk kamu:<br>
+        1. Teror Rumah Impian.<br>
+        2. Kutukan Tali Pocong.<br>
+        3. Mimpi Buruk di Sudut Kota.<br><br>
+        Jadi cerita yang mana yang ingin kamu dengarkan?</p>`,
         status: "star",
         title: "naya_dongeng",
       },
@@ -242,8 +245,12 @@ const Star = () => {
     setResults([
       {
         id: 231313,
-        result:
-          "Selamat datang, Sobat Mantap! Perkenalkan saya Ibu Dewi dari Bank Mandiri Taspen. Ada yang bisa Ibu bantu hari ini?",
+        result: `<p>Hai aku Owdi, aku punya beberapa cerita horor nih untuk kamu:
+1. Teror Rumah Impian.
+2. Kutukan Tali Pocong.
+3. Mimpi Buruk di Sudut Kota.
+
+Jadi cerita yang mana yang ingin kamu dengarkan?`,
         status: "star",
         title: "naya_dongeng",
       },
@@ -320,7 +327,13 @@ const Star = () => {
                             {result.id === newestMessageId ? (
                               <TypewriterEffect text={cleanResult} />
                             ) : (
-                              <span className="text-white">{cleanResult}</span>
+                              // <span className="text-white">{cleanResult}</span>
+                              <span
+                                className="text-white"
+                                dangerouslySetInnerHTML={{
+                                  __html: cleanResult,
+                                }}
+                              />
                             )}
                           </div>
                         </div>
