@@ -35,6 +35,8 @@ const Star = () => {
   const mediaRecorder: any = useRef(null);
   const mimeType = "audio/webm";
   const [selectedIdleVideo, setSelectedIdleVideo] = useState("");
+  const BackgroundAudio = useRef<HTMLAudioElement | null>(null);
+
   const getMicrophonePermission = async () => {
     if ("MediaRecorder" in window) {
       try {
@@ -130,7 +132,32 @@ const Star = () => {
     mediaRecorder.current.start();
     setAudioChunks(localAudioChunks);
   };
+  useEffect(() => {
+    BackgroundAudio.current = new Audio(
+      "https://res.cloudinary.com/dcd1jeldi/video/upload/v1730121772/demo-dongeng-bg-music.mp3"
+    );
+    BackgroundAudio.current.volume = 0.1;
+    BackgroundAudio.current.loop = true;
 
+    const startBackgroundAudio = () => {
+      if (BackgroundAudio.current) {
+        BackgroundAudio.current
+          .play()
+          .then(() => console.log("Background audio started successfully"))
+          .catch((error) =>
+            console.log("Error playing background audio:", error)
+          );
+
+        window.removeEventListener("click", startBackgroundAudio);
+      }
+    };
+
+    window.addEventListener("click", startBackgroundAudio);
+
+    return () => {
+      window.removeEventListener("click", startBackgroundAudio);
+    };
+  }, []);
   const stopRecording = async () => {
     mediaRecorder.current.stop();
     mediaRecorder.current.onstop = async () => {
