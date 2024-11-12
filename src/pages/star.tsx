@@ -8,75 +8,119 @@ import Face6Icon from "@mui/icons-material/Face6";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import PaidIcon from "@mui/icons-material/Paid";
-import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import AlertSnackbar from "../components/AlertSnackbar/Alertsnackbar";
 import VideoRecorder from "../components/VideoRecorder/VideoRecorder";
 import GraphicEqIcon from "@mui/icons-material/GraphicEq";
-import {
-  chatbot,
-  resetChatbot,
-  speechToText,
-  textToSpeech,
-} from "../services/ApiService";
+import { chatbot, resetChatbot, textToSpeech } from "../services/ApiService";
 import TypewriterEffect from "../components/TypewriterEffect/TypewriterEffect";
 import { cardData } from "../data";
+import TypingIndicator from "../components/TypeIndicator";
 
 const Star = () => {
-  const [startTime, setStartTime] = useState<any>(null);
-  const [isRecording, setIsRecording] = useState(false);
   const [startStory, setStartStory] = useState(false);
-  const [isLoadingChatResponse, setIsLoadingChatResponse] = useState(false);
   const [newestMessageId, setNewestMessageId] = useState<null | number>(null);
 
-  const [buttonIcon, setButtonIcon] = useState(<MicIcon />);
   const [showVideo, setShowVideo] = useState(false);
-  const [voiceId] = useState("AvpfYK43dwo4JbkSVBVe");
+  const [voiceId] = useState("cmOAElxzaS4tbxmzTzCD");
   const [model] = useState("gpt-4o");
   const [starName] = useState("naya_dongeng");
   const [results, setResults] = useState<any>([]);
-  const [stream, setStream] = useState<any>(null);
-  const [audioChunks, setAudioChunks] = useState([]);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const mediaRecorder: any = useRef(null);
-  const mimeType = "audio/webm";
-  const [selectedIdleVideo, setSelectedIdleVideo] = useState("");
   const BackgroundAudio = useRef<HTMLAudioElement | null>(null);
 
-  const getMicrophonePermission = async () => {
-    if ("MediaRecorder" in window) {
-      try {
-        const streamData = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: false,
-        });
-        setStream(streamData);
-      } catch (err: any) {
-        console.error("Microphone permission error:", err);
-        if (err.name === "NotAllowedError") {
-          alert(
-            "Microphone access was denied. Please enable it in your browser settings."
-          );
-        } else if (err.name === "NotFoundError") {
-          alert("No microphone was found on your device.");
-        } else {
-          alert("Error accessing the microphone: " + err.message);
+  const [isListening, setIsListening] = useState<boolean>(false);
+  const [recognition, setRecognition] = useState<any>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  useEffect(() => {
+    if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition;
+      const recognitionInstance = new SpeechRecognition() as any;
+      recognitionInstance.continuous = false; // Stop after each phrase
+      recognitionInstance.interimResults = false; // Get final results only
+      recognitionInstance.lang = "id-ID"; // Set language
+
+      recognitionInstance.onresult = async (event: any) => {
+        setIsTyping(true);
+        const lastTranscript = event.results[0][0].transcript;
+        await addMessage(lastTranscript, "user", "User");
+
+        const chatResponse = await makeApiCall(
+          () => chatbot("dev2", lastTranscript, starName, model),
+          "Error during chatbot processing"
+        );
+
+        if (!chatResponse) {
+          console.log("gaada hasil");
+          return;
         }
-      }
+        const cleanResult = chatResponse.data
+          ? chatResponse.data.replace(/```json\n\[\]\n```/g, "")
+          : chatResponse.data;
+
+        const resultChat = cleanResult.includes("##creepy##")
+          ? cleanResult.replace("##creepy##", "")
+          : cleanResult;
+
+        const audioResponse = await makeApiCall(
+          () => textToSpeech(resultChat, voiceId),
+          "Error during text-to-speech processing"
+        );
+
+        if (!chatResponse) {
+          console.log("gaada audio");
+          return;
+        }
+        setIsTyping(false);
+        setShowVideo(true);
+
+        await addMessage(resultChat, "star", starName);
+
+        const resultAudioChat = audioResponse?.data;
+        setAudioUrl(resultAudioChat);
+      };
+
+      recognitionInstance.onend = () => {
+        console.log("cek");
+        if (isListening) {
+          recognitionInstance.start(); // Restart recognition automatically
+        }
+      };
+
+      setRecognition(recognitionInstance);
     } else {
-      alert("The MediaRecorder API is not supported in your browser.");
+      alert("Browser tidak mendukung Web Speech API");
+    }
+  }, [isListening]);
+
+  const startListening = () => {
+    console.log("start");
+    if (recognition) {
+      setIsListening(true);
+      recognition.start();
     }
   };
 
-  useEffect(() => {
-    getMicrophonePermission();
+  const stopListening = () => {
+    setIsListening(false);
+    console.log("stop");
 
-    if (isLoadingChatResponse) {
-      setButtonIcon(<GraphicEqIcon />);
-    } else {
-      setButtonIcon(<MicIcon />);
+    recognition.stop();
+  };
+
+  useEffect(() => {
+    if (audioUrl && audioRef.current) {
+      audioRef.current.play();
+      audioRef.current.onended = () => {
+        if (isListening) {
+          setShowVideo(false);
+          recognition.start();
+        }
+      };
     }
-  }, [results, isLoadingChatResponse]);
+  }, [audioUrl]);
 
   useEffect(() => {
     setResults([
@@ -89,21 +133,6 @@ const Star = () => {
     ]);
     setNewestMessageId(231313);
   }, []);
-
-  // Randomly pick an idle video when showVideo is false
-  useEffect(() => {
-    if (showVideo === false) {
-      const randomIdleVideo =
-        idleVideos[Math.floor(Math.random() * idleVideos.length)];
-      setSelectedIdleVideo(randomIdleVideo);
-    }
-  }, [showVideo]);
-
-  // const addMessage = async (text: string, status: string, title: string) => {
-  //   const newMessage = { status, title, result: text, id: Date.now() };
-  //   setResults((prevResults: any) => [newMessage, ...prevResults]);
-  //   setNewestMessageId(newMessage.id);
-  // };
 
   const addMessage = async (text: string, status: string, title: string) => {
     let cleanText = text;
@@ -136,131 +165,13 @@ const Star = () => {
       console.error(error);
       setSnackbarMessage(errorMessage);
       setOpenSnackbar(true);
-      setIsLoadingChatResponse(false);
       setShowVideo(false);
       return null;
     }
   };
 
-  const startRecording = async () => {
-    setStartTime(Date.now());
-    const media: any = new MediaRecorder(stream, { mimeType: mimeType });
-    mediaRecorder.current = media;
-    let localAudioChunks: any = [];
-    mediaRecorder.current.ondataavailable = (event: any) => {
-      if (typeof event.data === "undefined") return;
-      if (event.data.size === 0) return;
-      localAudioChunks.push(event.data);
-    };
-    mediaRecorder.current.start();
-    setAudioChunks(localAudioChunks);
-  };
-
-  const stopRecording = async () => {
-    mediaRecorder.current.stop();
-    mediaRecorder.current.onstop = async () => {
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-
-      if (duration < 1000) {
-        setSnackbarMessage("Please record at least 1 second of audio");
-        setOpenSnackbar(true);
-        setButtonIcon(<MicIcon />);
-        setIsRecording(false);
-        return;
-      }
-      if (audioChunks.length === 0) {
-        setIsRecording(false);
-        setTimeout(() => {
-          setButtonIcon(<MicIcon />);
-        }, 3000);
-        return;
-      }
-      const audioBlob = new Blob(audioChunks, { type: mimeType });
-      const reader = new FileReader();
-
-      reader.onload = async () => {
-        const base64String = reader.result;
-        const speechResponse = await makeApiCall(
-          () => speechToText(base64String),
-          "Error during speech-to-text processing"
-        );
-
-        if (!speechResponse) return;
-
-        const resultText = speechResponse.data;
-        await addMessage(resultText, "user", "User");
-        setIsLoadingChatResponse(true);
-
-        const chatResponse = await makeApiCall(
-          () => chatbot("dev", resultText, starName, model),
-          "Error during chatbot processing"
-        );
-        if (!chatResponse) return;
-        const cleanResult = chatResponse.data
-          ? chatResponse.data.replace(/```json\n\[\]\n```/g, "")
-          : chatResponse.data;
-
-        const resultChat = cleanResult.includes("##creepy##")
-          ? cleanResult.replace("##creepy##", "")
-          : cleanResult;
-
-        const audioResponse = await makeApiCall(
-          () => textToSpeech(resultChat, voiceId),
-          "Error during text-to-speech processing"
-        );
-
-        if (!audioResponse) return;
-
-        setIsLoadingChatResponse(false);
-        setShowVideo(true);
-
-        await addMessage(resultChat, "star", starName);
-
-        // const resultAudioChat = audioResponse;
-        const resultAudioChat = audioResponse?.data;
-        if (resultAudioChat) {
-          const audio = new Audio(resultAudioChat);
-
-          audio.onended = () => {
-            setShowVideo(false);
-            audio.src = "";
-          };
-
-          audio
-            .play()
-            .then(() => {
-              console.log("Audio started playing successfully");
-            })
-            .catch((e) => {
-              console.error("Error playing audio:", e);
-            });
-        } else {
-          setShowVideo(false);
-        }
-
-        setShowVideo(true);
-      };
-
-      reader.readAsDataURL(audioBlob);
-      setAudioChunks([]);
-    };
-  };
-
-  const toggleRecording = () => {
-    if (!isRecording) {
-      startRecording();
-      setIsRecording(true);
-      setButtonIcon(<GraphicEqIcon />);
-    } else {
-      stopRecording();
-      setIsRecording(false);
-      setButtonIcon(<MoreHorizIcon />);
-    }
-  };
-
   const handleReset = async () => {
-    setIsRecording(false);
+    false;
     setResults([
       {
         id: 231313,
@@ -270,7 +181,7 @@ const Star = () => {
       },
     ]);
     makeApiCall(
-      () => resetChatbot("dev", starName),
+      () => resetChatbot("dev2", starName),
       "Error during chatbot reset"
     );
     setOpenSnackbar(!openSnackbar);
@@ -281,9 +192,6 @@ const Star = () => {
     setOpenSnackbar(false);
     setSnackbarMessage("");
   };
-  const idleVideos = [
-    "https://res.cloudinary.com/dcd1jeldi/video/upload/v1731389998/dongeng-idle.mp4",
-  ];
   return (
     <div
       className={`${
@@ -370,13 +278,27 @@ const Star = () => {
               placeholder="Type your message..."
               className="px-4 py-2 rounded-full w-full"
             />
-            <button
-              onClick={() => toggleRecording()}
-              onContextMenu={(e) => e.preventDefault()}
-              className="text-white shadow-xl bg-gradient-to-r flex items-center justify-between px-6 from-orange-600 to-orange-400 font-semibold py-2 rounded-full border border-orange-600"
-            >
-              <span style={{ pointerEvents: "none" }}>{buttonIcon}</span>
-            </button>
+            {isListening ? (
+              <button
+                onClick={() => stopListening()}
+                onContextMenu={(e) => e.preventDefault()}
+                className="text-white shadow-xl bg-gradient-to-r flex items-center justify-between px-6 from-orange-600 to-orange-400 font-semibold py-2 rounded-full border border-orange-600"
+              >
+                <span style={{ pointerEvents: "none" }}>
+                  <GraphicEqIcon />
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => startListening()}
+                onContextMenu={(e) => e.preventDefault()}
+                className="text-white shadow-xl bg-gradient-to-r flex items-center justify-between px-6 from-orange-600 to-orange-400 font-semibold py-2 rounded-full border border-orange-600"
+              >
+                <span style={{ pointerEvents: "none" }}>
+                  <MicIcon />
+                </span>
+              </button>
+            )}
           </div>
           <div className="flex justify-center w-full py-4">
             <button className="background-color-btn flex gap-2 items-center justify-center font-semibold text-white px-4 py-2 rounded-full">
@@ -391,14 +313,26 @@ const Star = () => {
                 videoSrc="https://res.cloudinary.com/dcd1jeldi/video/upload/v1731396204/dongeng-talk.mp4"
               />
             ) : (
-              <VideoRecorder looping videoSrc={selectedIdleVideo} />
+              <VideoRecorder
+                looping
+                videoSrc="https://res.cloudinary.com/dcd1jeldi/video/upload/v1731389998/dongeng-idle.mp4"
+              />
             )}
+            {audioUrl && <audio ref={audioRef} src={audioUrl} />}
           </div>
         </div>
 
         {/* Right Panel - Chat Section */}
         <div className="flex flex-col w-full p-4 custom-gradient-bg">
           <div className="bg-none p-4">
+            {isTyping && (
+              <div className="w-1/3 gap-3 flex flex-col mb-2 semi-transparent-background px-2 ml-4 pb-2 text-left rounded-br-xl rounded-tr-xl rounded-bl-xl">
+                <div>
+                  <p className="star-text pl-2">Owdi</p>
+                </div>
+                <TypingIndicator />
+              </div>
+            )}
             {results && results.length > 0 && (
               <div className="overflow-y-auto h-[500px] text-white z-20 flex flex-col justify-center items-center">
                 <div className="w-full h-full px-4 space-y-3 overflow-y-auto">
@@ -409,7 +343,7 @@ const Star = () => {
                     );
                     return (
                       <div
-                        className={`w-full   semi-transparent-background px-4 ${
+                        className={`w-full semi-transparent-background px-4 ${
                           result.status === "user"
                             ? "text-right rounded-br-xl rounded-tl-xl rounded-bl-xl"
                             : "text-left rounded-br-xl rounded-tr-xl rounded-bl-xl"
