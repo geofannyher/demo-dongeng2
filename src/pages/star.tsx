@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import MicIcon from "@mui/icons-material/Mic";
-import StopIcon from "@mui/icons-material/Stop";
+import AddIcon from "@mui/icons-material/Add";
+import VideocamIcon from "@mui/icons-material/Videocam";
+import ImportContactsIcon from "@mui/icons-material/ImportContacts";
+import CakeIcon from "@mui/icons-material/Cake";
+import Face6Icon from "@mui/icons-material/Face6";
+import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import PaidIcon from "@mui/icons-material/Paid";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import AlertSnackbar from "../components/AlertSnackbar/Alertsnackbar";
 import VideoRecorder from "../components/VideoRecorder/VideoRecorder";
+import GraphicEqIcon from "@mui/icons-material/GraphicEq";
 import {
   chatbot,
   resetChatbot,
@@ -11,17 +19,15 @@ import {
   textToSpeech,
 } from "../services/ApiService";
 import TypewriterEffect from "../components/TypewriterEffect/TypewriterEffect";
-import { ReplayOutlined } from "@mui/icons-material";
+import { cardData } from "../data";
 
 const Star = () => {
   const [startTime, setStartTime] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [startStory, setStartStory] = useState(false);
   const [isLoadingChatResponse, setIsLoadingChatResponse] = useState(false);
   const [newestMessageId, setNewestMessageId] = useState<null | number>(null);
-  const [buttonText, setButtonText] = useState(
-    "Press the button and start talking"
-  );
-  const [buttonColor, setButtonColor] = useState("#6C2B85");
+
   const [buttonIcon, setButtonIcon] = useState(<MicIcon />);
   const [showVideo, setShowVideo] = useState(false);
   const [voiceId] = useState("AvpfYK43dwo4JbkSVBVe");
@@ -66,11 +72,9 @@ const Star = () => {
     getMicrophonePermission();
 
     if (isLoadingChatResponse) {
-      setButtonText("Loading Chat Response...");
+      setButtonIcon(<GraphicEqIcon />);
     } else {
-      setButtonColor("#6C2B85");
       setButtonIcon(<MicIcon />);
-      setButtonText("Press the button and start talking");
     }
   }, [results, isLoadingChatResponse]);
 
@@ -78,11 +82,7 @@ const Star = () => {
     setResults([
       {
         id: 231313,
-        result: `<p>Hai aku Owdi, aku punya beberapa cerita horor nih untuk kamu:<br>
-        1. Teror Rumah Impian.<br>
-        2. Kutukan Tali Pocong.<br>
-        3. Mimpi Buruk di Sudut Kota.<br><br>
-        Jadi cerita yang mana yang ingin kamu dengarkan?</p>`,
+        result: "Hai... aku Owdi. Kamu siapa?",
         status: "star",
         title: "naya_dongeng",
       },
@@ -99,8 +99,31 @@ const Star = () => {
     }
   }, [showVideo]);
 
+  // const addMessage = async (text: string, status: string, title: string) => {
+  //   const newMessage = { status, title, result: text, id: Date.now() };
+  //   setResults((prevResults: any) => [newMessage, ...prevResults]);
+  //   setNewestMessageId(newMessage.id);
+  // };
+
   const addMessage = async (text: string, status: string, title: string) => {
-    const newMessage = { status, title, result: text, id: Date.now() };
+    let cleanText = text;
+    if (text.includes("##creepy##")) {
+      cleanText = text.replace("##creepy##", "");
+
+      // Memainkan audio latar belakang
+      if (!BackgroundAudio.current) {
+        setStartStory(true);
+        BackgroundAudio.current = new Audio(
+          "https://res.cloudinary.com/dcd1jeldi/video/upload/v1730121772/demo-dongeng-bg-music.mp3"
+        );
+        BackgroundAudio.current.volume = 0.2;
+        BackgroundAudio.current.loop = true;
+      }
+      BackgroundAudio.current.play();
+    }
+
+    // Menambahkan pesan baru ke state
+    const newMessage = { status, title, result: cleanText, id: Date.now() };
     setResults((prevResults: any) => [newMessage, ...prevResults]);
     setNewestMessageId(newMessage.id);
   };
@@ -132,55 +155,24 @@ const Star = () => {
     mediaRecorder.current.start();
     setAudioChunks(localAudioChunks);
   };
-  useEffect(() => {
-    BackgroundAudio.current = new Audio(
-      "https://res.cloudinary.com/dcd1jeldi/video/upload/v1730121772/demo-dongeng-bg-music.mp3"
-    );
-    BackgroundAudio.current.volume = 0.2;
-    BackgroundAudio.current.loop = true;
 
-    const startBackgroundAudio = () => {
-      if (BackgroundAudio.current) {
-        BackgroundAudio.current
-          .play()
-          .then(() => console.log("Background audio started successfully"))
-          .catch((error) =>
-            console.log("Error playing background audio:", error)
-          );
-
-        window.removeEventListener("click", startBackgroundAudio);
-      }
-    };
-
-    window.addEventListener("click", startBackgroundAudio);
-
-    return () => {
-      window.removeEventListener("click", startBackgroundAudio);
-    };
-  }, []);
   const stopRecording = async () => {
     mediaRecorder.current.stop();
     mediaRecorder.current.onstop = async () => {
-      // clearTimeout(silenceTimeout);
       const endTime = Date.now();
       const duration = endTime - startTime;
 
       if (duration < 1000) {
         setSnackbarMessage("Please record at least 1 second of audio");
         setOpenSnackbar(true);
-        setButtonColor("#6C2B85");
         setButtonIcon(<MicIcon />);
-        setButtonText("Press the button and start talking");
         setIsRecording(false);
         return;
       }
       if (audioChunks.length === 0) {
         setIsRecording(false);
-        setButtonText("No audio input");
         setTimeout(() => {
-          setButtonColor("#6C2B85");
           setButtonIcon(<MicIcon />);
-          setButtonText("Press the button and start talking");
         }, 3000);
         return;
       }
@@ -208,9 +200,12 @@ const Star = () => {
         const cleanResult = chatResponse.data
           ? chatResponse.data.replace(/```json\n\[\]\n```/g, "")
           : chatResponse.data;
-        const resultChat = cleanResult;
+
+        const resultChat = cleanResult.includes("##creepy##")
+          ? cleanResult.replace("##creepy##", "")
+          : cleanResult;
+
         const audioResponse = await makeApiCall(
-          // () => textToSpeech({ text: resultChat }),
           () => textToSpeech(resultChat, voiceId),
           "Error during text-to-speech processing"
         );
@@ -256,14 +251,11 @@ const Star = () => {
     if (!isRecording) {
       startRecording();
       setIsRecording(true);
-      setButtonIcon(<StopIcon />);
-      setButtonText("Recording...");
+      setButtonIcon(<GraphicEqIcon />);
     } else {
       stopRecording();
       setIsRecording(false);
-      setButtonColor("#999999");
       setButtonIcon(<MoreHorizIcon />);
-      setButtonText("Processing...");
     }
   };
 
@@ -272,12 +264,7 @@ const Star = () => {
     setResults([
       {
         id: 231313,
-        result: `<p>Hai aku Owdi, aku punya beberapa cerita horor nih untuk kamu:
-1. Teror Rumah Impian.
-2. Kutukan Tali Pocong.
-3. Mimpi Buruk di Sudut Kota.
-
-Jadi cerita yang mana yang ingin kamu dengarkan?`,
+        result: "Hai... aku Owdi. Kamu siapa?",
         status: "star",
         title: "naya_dongeng",
       },
@@ -295,102 +282,247 @@ Jadi cerita yang mana yang ingin kamu dengarkan?`,
     setSnackbarMessage("");
   };
   const idleVideos = [
-    "https://res.cloudinary.com/dcd1jeldi/video/upload/v1728268295/qkondrqku26swnrhyzuo.mp4",
+    "https://res.cloudinary.com/dcd1jeldi/video/upload/v1731389998/dongeng-idle.mp4",
   ];
   return (
-    <div className="flex flex-col justify-center items-center min-h-screen pt-5">
-      <div className="relative h-screen flex justify-center items-center">
-        <div className="absolute h-screen mt-5 flex flex-col items-center">
-          <div className="relative">
-            <button
-              onClick={() => handleReset()}
-              className="flex shadow-sm duration-300 hover:bg-violet-900 items-center justify-center text-white absolute -right-2 z-50 -top-5 rounded-full w-10 h-10 bg-violet-500"
-            >
-              <ReplayOutlined
-                style={{
-                  fontSize: 18,
-                }}
-              />
-            </button>
-            {/* Video Player */}
-            <div className="relative">
-              {showVideo ? (
-                <VideoRecorder
-                  looping
-                  videoSrc="https://res.cloudinary.com/dcd1jeldi/video/upload/v1728268497/pfngooawxt7o8dyoxzes.mp4"
-                />
-              ) : (
-                <VideoRecorder looping videoSrc={selectedIdleVideo} />
-              )}
-              {/* User and Star Text Container */}
-              {results && results.length > 0 && (
-                <div className="absolute bottom-0 left-0 right-0 h-[38%] overflow-y-auto rounded-br-lg rounded-bl-lg bg-black bg-opacity-50 text-white z-20 flex flex-col justify-center items-center">
-                  <div className="w-full h-full px-4 space-y-3 overflow-y-auto">
-                    {results.map((result: any, _: any) => {
-                      const cleanResult = result.result.replace(
-                        /```json\n\[\]\n```/g,
-                        ""
-                      );
-                      return (
-                        <div
-                          className={`w-full px-4 ${
-                            result.status === "user"
-                              ? "text-right"
-                              : "text-left"
-                          }`}
-                          key={result.id} // Add a key for each element
-                        >
-                          <p
-                            className={
-                              result.status === "user"
-                                ? "user-text"
-                                : "star-text"
-                            }
-                          >
-                            {result.title.charAt(0).toUpperCase() +
-                              result.title.slice(1)}
-                          </p>
-                          <div className="content-text">
-                            {result.id === newestMessageId ? (
-                              <TypewriterEffect text={cleanResult} />
-                            ) : (
-                              // <span className="text-white">{cleanResult}</span>
-                              <span
-                                className="text-white"
-                                dangerouslySetInnerHTML={{
-                                  __html: cleanResult,
-                                }}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+    <div
+      className={`${
+        startStory
+          ? "bg-black"
+          : "bg-gradient-to-r from-orange-700 to-orange-400"
+      } flex flex-col items-center min-h-screen transition-all duration-500 ease-in-out`}
+    >
+      <div className="flex flex-row w-full max-w-screen-xl">
+        {/* Left Panel - Chat History */}
+        <div className="flex flex-col space-y-5 w-1/4 p-4">
+          <div className="text-3xl text-white font-bold">OWDI</div>
+          <div className="space-y-2 ">
+            <h1 className="text-white text-sm font-semibold">
+              Own Digital Companion
+            </h1>
+            <p className="text-white text-sm font-normal">
+              your digital friend who is always ready to help you with your
+              daily activities, making life simpler and more fun!
+            </p>
+          </div>
+          <button className="text-white  bg-gradient-to-r flex items-center justify-between px-4 from-orange-600 to-orange-400 font-semibold py-4 rounded-xl border border-orange-600 shadow-lg mb-4">
+            Buat Sesi Obrolan Baru <KeyboardArrowRightIcon fontSize="small" />
+          </button>
 
+          {/* Riwayat Obrolan */}
+          <div className="bg-[#FEE0D9] rounded-xl shadow-lg p-4 w-72">
+            <div className="flex items-center justify-between pb-2 border-b border-opacity-50 border-[#FF8B79]">
+              <h2 className="font-semibold text-[#333E4F] text-lg">
+                Riwayat Obrolan
+              </h2>
+              <KeyboardArrowDownIcon
+                fontSize="small"
+                className="text-[#333E4F]"
+              />
+            </div>
+            <ul className="mt-3 text-[#333E4F]">
+              <span className="text-xs text-[#A8A8A8]">31 Oktober 2024</span>
+              <li className="flex py-4  justify-between items-center text-sm">
+                <span className="font-semibold">
+                  Owdi Ceritakan film Angkasa
+                </span>
+                <KeyboardArrowRightIcon
+                  fontSize="small"
+                  className="text-[#333E4F]"
+                />
+              </li>
+              <li className="flex py-4  justify-between items-center text-sm">
+                <span className="font-semibold">
+                  Owdi Ceritakan film Sehati Se...
+                </span>
+                <KeyboardArrowRightIcon
+                  fontSize="small"
+                  className="text-[#333E4F]"
+                />
+              </li>
+              <span className="text-xs text-[#A8A8A8]">28 Oktober 2024</span>
+              <li className="flex py-4  justify-between items-center text-sm">
+                <span className="font-semibold">Owdi aku sedih</span>
+                <KeyboardArrowRightIcon
+                  fontSize="small"
+                  className="text-[#333E4F]"
+                />
+              </li>
+              <li className="flex py-4  justify-between items-center text-sm">
+                <span className="font-semibold">
+                  Horor kampung setan di Banyuw...
+                </span>
+                <KeyboardArrowRightIcon
+                  fontSize="small"
+                  className="text-[#333E4F]"
+                />
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Center Panel - Main Interaction */}
+        <div className="flex flex-col rounded-br-[40px] rounded-bl-[40px] items-center w-1/2 relative  gradient-background">
+          {/* Audio Recording */}
+          <div className="absolute z-30 gap-2 rounded-[40px] bottom-0 w-full flex justify-center items-center bg-white p-2">
+            <input
+              type="text"
+              placeholder="Type your message..."
+              className="px-4 py-2 rounded-full w-full"
+            />
             <button
               onClick={() => toggleRecording()}
               onContextMenu={(e) => e.preventDefault()}
-              className="relative left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white font-bold p-2 rounded-full my-4 select-none"
-              style={{
-                top: "-20px",
-                zIndex: 30,
-                touchAction: "manipulation",
-                WebkitTapHighlightColor: "transparent",
-                outline: "none",
-                width: "50px",
-                height: "50px",
-                backgroundColor: buttonColor,
-              }}
+              className="text-white shadow-xl bg-gradient-to-r flex items-center justify-between px-6 from-orange-600 to-orange-400 font-semibold py-2 rounded-full border border-orange-600"
             >
               <span style={{ pointerEvents: "none" }}>{buttonIcon}</span>
             </button>
           </div>
+          <div className="flex justify-center w-full py-4">
+            <button className="background-color-btn flex gap-2 items-center justify-center font-semibold text-white px-4 py-2 rounded-full">
+              <PaidIcon className="text-yellow-600" fontSize="small" /> 50
+              credits tersisa <AddIcon />
+            </button>
+          </div>
+          <div className="relative ">
+            {showVideo ? (
+              <VideoRecorder
+                looping
+                videoSrc="https://res.cloudinary.com/dcd1jeldi/video/upload/v1731396204/dongeng-talk.mp4"
+              />
+            ) : (
+              <VideoRecorder looping videoSrc={selectedIdleVideo} />
+            )}
+          </div>
+        </div>
 
-          <p className="text-center text-[#293060] font-bold">{buttonText}</p>
+        {/* Right Panel - Chat Section */}
+        <div className="flex flex-col w-full p-4 custom-gradient-bg">
+          <div className="bg-none p-4">
+            {results && results.length > 0 && (
+              <div className="overflow-y-auto h-[500px] text-white z-20 flex flex-col justify-center items-center">
+                <div className="w-full h-full px-4 space-y-3 overflow-y-auto">
+                  {results.map((result: any, _: any) => {
+                    const cleanResult = result.result.replace(
+                      /```json\n\[\]\n```/g,
+                      ""
+                    );
+                    return (
+                      <div
+                        className={`w-full   semi-transparent-background px-4 ${
+                          result.status === "user"
+                            ? "text-right rounded-br-xl rounded-tl-xl rounded-bl-xl"
+                            : "text-left rounded-br-xl rounded-tr-xl rounded-bl-xl"
+                        }`}
+                        key={result.id} // Add a key for each element
+                      >
+                        <p
+                          className={
+                            result.status === "user" ? "user-text" : "star-text"
+                          }
+                        >
+                          {result.title == "naya_dongeng" ? "Owdi" : "You"}
+                        </p>
+                        <div className="content-text">
+                          {result.id === newestMessageId ? (
+                            <TypewriterEffect text={cleanResult} />
+                          ) : (
+                            <span
+                              className="text-white"
+                              dangerouslySetInnerHTML={{
+                                __html: cleanResult,
+                              }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {results && results.length > 1 && (
+              <div className="mt-2 flex w-full">
+                <button
+                  onClick={() => handleReset()}
+                  className="w-full rounded-full cursor-pointer px-4 py-2 border-white text-white fo border-2 "
+                >
+                  Selesaikan Sesi ini
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Panel - Topic Section */}
+      {/* <div className="flex flex-col text-color-primary py-6 bg-gradient-to-t from-orange-500 to-orange-600 w-full"> */}
+      <div
+        className={`${
+          startStory
+            ? "bg-gray-900"
+            : "bg-gradient-to-t from-orange-500 to-orange-600"
+        } flex flex-col text-color-primary py-6 transition-all duration-500 ease-in-out w-full`}
+      >
+        <div className="mb-2 container mx-auto ml-[26rem]">
+          <div className="space-y-2">
+            <h1 className="text-left font-semibold text-white">
+              Mau Owdi ceritakan topik dibawah ini ?
+            </h1>
+            {/* Topic Buttons */}
+            <div className="flex space-x-2 mb-4">
+              <button className="bg-blue-900 text-white font-semibold py-2 px-4 rounded-full focus:outline-none flex gap-2 items-center">
+                Semua Topik
+              </button>
+              <button className="bg-white text-gray-800 font-semibold py-2 px-4 rounded-full focus:outline-none flex gap-2 items-center">
+                <VideocamIcon fontSize="small" /> Film
+              </button>
+              <button className="bg-white text-gray-800 font-semibold py-2 px-4 rounded-full focus:outline-none flex gap-2 items-center">
+                <Face6Icon fontSize="small" /> Film Horor
+              </button>
+              <button className="bg-white text-gray-800 font-semibold py-2 px-4 rounded-full focus:outline-none flex gap-2 items-center">
+                <CakeIcon fontSize="small" />
+                Resep Makanan
+              </button>
+              <button className="bg-white text-gray-800 font-semibold py-2 px-4 rounded-full focus:outline-none flex gap-2 items-center">
+                <ImportContactsIcon fontSize="small" />
+                Cerita Anak
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-4">
+          {cardData.map((item, index) => {
+            const IconComponent = item.icons;
+            return (
+              <div key={index}>
+                <div className="bg-white w-64 rounded-xl shadow-lg overflow-hidden">
+                  <img
+                    src={item.image}
+                    alt="Topic Image"
+                    className="w-full h-36 object-fill"
+                  />
+                  <div className="p-4 relative">
+                    <h3 className="font-bold text-xs mb-2">{item.title}</h3>
+                    <div className="flex justify-between items-center text-gray-600">
+                      <div className=" absolute -top-3 bg-gray-200 bg-opacity-85 font-semibold rounded-xl px-2">
+                        <IconComponent className="mr-2" fontSize="small" />
+                        <span className="text-sm">{item.category}</span>
+                      </div>
+                      <span className="text-xs flex items-center gap-1 font-semibold">
+                        <PaidIcon
+                          fontSize="small"
+                          className="text-yellow-600"
+                        />{" "}
+                        {item.credits} Credit
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
       <AlertSnackbar

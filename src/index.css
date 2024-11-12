@@ -1,7 +1,52 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+.background-gradient-primary {
+  background: linear-gradient(
+      0deg,
+      rgba(143, 132, 132, 0.75),
+      rgba(143, 132, 132, 0.75)
+    ),
+    linear-gradient(
+      45deg,
+      rgba(239, 35, 40, 0.75) 0%,
+      rgba(251, 148, 43, 0.75) 100%
+    );
+}
+.semi-transparent-background {
+  background: rgba(255, 255, 255, 0.5);
+}
 
+.text-color-primary {
+  color: var(--icon-system-primary, rgba(0, 26, 65, 1));
+}
+.background-color-btn {
+  background-color: var(--icon-system-primary, rgba(0, 26, 65, 1));
+}
+.gradient-background {
+  background: linear-gradient(
+    25.93deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(153, 153, 153, 0.5) 100%
+  );
+}
+
+@font-face {
+  font-family: "Gilroy-Regular";
+  src: url("./assets/fonts/Gilroy-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Gilroy-SemiBold";
+  src: url("./assets/fonts/Gilroy-SemiBold.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+* {
+  font-family: "Gilroy-Regular", sans-serif;
+  font-weight: 400;
+}
 .star-text {
   color: #6c2b85;
   font-size: 16px;

@@ -10,12 +10,12 @@ const VideoRecorder = ({
       <video
         src={videoSrc}
         controls={false}
-        className="rounded-lg max-w-xl mx-auto height-large width-large"
+        className="rounded-br-[40px] rounded-bl-[40px] max-w-xl mx-auto height-large width-large"
         style={{
           width: "600px",
-          height: "750px",
+          height: "800px",
           objectFit: "cover",
-          objectPosition: "53% 100%",
+          // objectPosition: "53% 100%",
         }}
         autoPlay={true}
         loop={looping}
