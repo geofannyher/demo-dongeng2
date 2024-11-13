@@ -11,17 +11,18 @@ import PaidIcon from "@mui/icons-material/Paid";
 import AlertSnackbar from "../components/AlertSnackbar/Alertsnackbar";
 import VideoRecorder from "../components/VideoRecorder/VideoRecorder";
 import GraphicEqIcon from "@mui/icons-material/GraphicEq";
-import { chatbot, resetChatbot, textToSpeech } from "../services/ApiService";
+import { chatbot, resetChatbot } from "../services/ApiService";
 import TypewriterEffect from "../components/TypewriterEffect/TypewriterEffect";
 import { cardData } from "../data";
 import TypingIndicator from "../components/TypeIndicator";
+import { textToSpeech } from "../services/elevenlabs";
 
 const Star = () => {
   const [startStory, setStartStory] = useState(false);
   const [newestMessageId, setNewestMessageId] = useState<null | number>(null);
 
   const [showVideo, setShowVideo] = useState(false);
-  const [voiceId] = useState("cmOAElxzaS4tbxmzTzCD");
+  // const [voiceId] = useState("cmOAElxzaS4tbxmzTzCD");
   const [model] = useState("gpt-4o");
   const [starName] = useState("naya_dongeng");
   const [results, setResults] = useState<any>([]);
@@ -34,6 +35,8 @@ const Star = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+
+  let idUser = useRef("");
   useEffect(() => {
     if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition;
@@ -48,7 +51,7 @@ const Star = () => {
         await addMessage(lastTranscript, "user", "User");
 
         const chatResponse = await makeApiCall(
-          () => chatbot("dev2", lastTranscript, starName, model),
+          () => chatbot(idUser.current, lastTranscript, starName, model),
           "Error during chatbot processing"
         );
 
@@ -64,10 +67,13 @@ const Star = () => {
           ? cleanResult.replace("##creepy##", "")
           : cleanResult;
 
-        const audioResponse = await makeApiCall(
-          () => textToSpeech(resultChat, voiceId),
-          "Error during text-to-speech processing"
-        );
+        const audioResponse: any = await textToSpeech({
+          uid: "cmOAElxzaS4tbxmzTzCD",
+          similarity_boost: 1,
+          stability: 0.38,
+          model_id: "eleven_multilingual_v2",
+          text: resultChat,
+        });
 
         if (!chatResponse) {
           console.log("gaada audio");
@@ -78,12 +84,16 @@ const Star = () => {
 
         await addMessage(resultChat, "star", starName);
 
-        const resultAudioChat = audioResponse?.data;
-        setAudioUrl(resultAudioChat);
+        if (audioResponse) {
+          const blob = new Blob([audioResponse.data], { type: "audio/mpeg" });
+          const url = URL.createObjectURL(blob);
+          setAudioUrl(url);
+        } else {
+          console.error("Invalid audio data format:", audioResponse.data);
+        }
       };
 
       recognitionInstance.onend = () => {
-        console.log("cek");
         if (isListening) {
           recognitionInstance.start(); // Restart recognition automatically
         }
@@ -94,6 +104,17 @@ const Star = () => {
       alert("Browser tidak mendukung Web Speech API");
     }
   }, [isListening]);
+
+  const generateRandomString = async () => {
+    const charset =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let result = "";
+    for (let i = 0; i < 5; i++) {
+      const randomIndex = Math.floor(Math.random() * charset.length);
+      result += charset[randomIndex];
+    }
+    idUser.current = result;
+  };
 
   const startListening = () => {
     console.log("start");
@@ -112,7 +133,9 @@ const Star = () => {
 
   useEffect(() => {
     if (audioUrl && audioRef.current) {
-      audioRef.current.play();
+      audioRef.current
+        .play()
+        .catch((error) => console.error("Audio playback error:", error));
       audioRef.current.onended = () => {
         if (isListening) {
           setShowVideo(false);
@@ -123,14 +146,7 @@ const Star = () => {
   }, [audioUrl]);
 
   useEffect(() => {
-    setResults([
-      {
-        id: 231313,
-        result: "Hai... aku Owdi. Kamu siapa?",
-        status: "star",
-        title: "naya_dongeng",
-      },
-    ]);
+    generateRandomString();
     setNewestMessageId(231313);
   }, []);
 
@@ -171,19 +187,11 @@ const Star = () => {
   };
 
   const handleReset = async () => {
-    false;
-    setResults([
-      {
-        id: 231313,
-        result: "Hai... aku Owdi. Kamu siapa?",
-        status: "star",
-        title: "naya_dongeng",
-      },
-    ]);
     makeApiCall(
-      () => resetChatbot("dev2", starName),
+      () => resetChatbot(idUser.current, starName),
       "Error during chatbot reset"
     );
+    setResults([]);
     setOpenSnackbar(!openSnackbar);
     setSnackbarMessage("success reset");
   };
@@ -435,7 +443,9 @@ const Star = () => {
                   <img
                     src={item.image}
                     alt="Topic Image"
-                    className="w-full h-36 object-fill"
+                    className={`w-full h-36  ${
+                      item.category === "Horor" ? "object-cover" : "object-fill"
+                    }`}
                   />
                   <div className="p-4 relative">
                     <h3 className="font-bold text-xs mb-2">{item.title}</h3>
