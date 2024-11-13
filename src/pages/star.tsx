@@ -49,7 +49,7 @@ const Star = () => {
         setIsTyping(true);
         const lastTranscript = event.results[0][0].transcript;
         await addMessage(lastTranscript, "user", "User");
-
+        stopListening();
         const chatResponse = await makeApiCall(
           () => chatbot(idUser.current, lastTranscript, starName, model),
           "Error during chatbot processing"
@@ -93,11 +93,11 @@ const Star = () => {
         }
       };
 
-      recognitionInstance.onend = () => {
-        if (isListening) {
-          recognitionInstance.start(); // Restart recognition automatically
-        }
-      };
+      // recognitionInstance.onend = () => {
+      //   if (isListening) {
+      //     recognitionInstance.start(); // Restart recognition automatically
+      //   }
+      // };
 
       setRecognition(recognitionInstance);
     } else {
@@ -117,18 +117,23 @@ const Star = () => {
   };
 
   const startListening = () => {
-    console.log("start");
     if (recognition) {
       setIsListening(true);
+      console.log("start");
       recognition.start();
+    } else {
+      console.error("Recognition instance is null, cannot start listening");
     }
   };
 
   const stopListening = () => {
-    setIsListening(false);
-    console.log("stop");
-
-    recognition.stop();
+    if (recognition) {
+      setIsListening(false);
+      console.log("stop");
+      recognition.stop();
+    } else {
+      console.error("Recognition instance is null, cannot stop listening");
+    }
   };
 
   useEffect(() => {
@@ -137,10 +142,11 @@ const Star = () => {
         .play()
         .catch((error) => console.error("Audio playback error:", error));
       audioRef.current.onended = () => {
-        if (isListening) {
-          setShowVideo(false);
-          recognition.start();
-        }
+        startListening();
+        // if (isListening) {
+        setShowVideo(false);
+        // recognition.start();
+        // }
       };
     }
   }, [audioUrl]);
