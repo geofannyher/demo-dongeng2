@@ -39,7 +39,6 @@ const Star = () => {
       recognitionInstance.lang = "id-ID";
 
       recognitionInstance.onresult = async (event: any) => {
-        console.log("hai");
         setIsTyping(true);
         const lastTranscript = event.results[0][0].transcript;
         addMessage(lastTranscript, "user", "User");
