@@ -71,7 +71,7 @@ const Star = () => {
         });
         const { data } = await client.predict("/predict", {
           text: resultChat,
-          model_name: "iburini",
+          model_name: "aluna",
         });
         if (!chatResponse) {
           console.log("gaada audio");
