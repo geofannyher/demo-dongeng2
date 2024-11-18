@@ -16,7 +16,7 @@ import TypewriterEffect from "../components/TypewriterEffect/TypewriterEffect";
 import { cardData } from "../data";
 import TypingIndicator from "../components/TypeIndicator";
 import { textToSpeech } from "../services/elevenlabs";
-
+import { Client } from "@gradio/client";
 const StarVideo2 = () => {
   const [startStory, setStartStory] = useState(false);
   const [newestMessageId, setNewestMessageId] = useState<null | number>(null);
@@ -67,13 +67,25 @@ const StarVideo2 = () => {
           ? cleanResult.replace("##creepy##", "")
           : cleanResult;
 
-        const audioResponse: any = await textToSpeech({
-          uid: "cmOAElxzaS4tbxmzTzCD",
-          similarity_boost: 1,
-          stability: 0.38,
-          model_id: "eleven_turbo_v2_5",
-          text: resultChat,
+        // const audioResponse: any = await textToSpeech({
+        //   uid: "cmOAElxzaS4tbxmzTzCD",
+        //   similarity_boost: 1,
+        //   stability: 0.38,
+        //   model_id: "eleven_turbo_v2_5",
+        //   text: resultChat,
+        // });
+        if (!import.meta.env.VITE_PASSWORD) {
+          console.log("no data env");
+          return;
+        }
+        const client = await Client.connect("https://talk.hadiwijaya.co/", {
+          auth: ["demo", import.meta.env.VITE_PASSWORD],
         });
+        const audioResponse = await client.predict("/predict", {
+          text: resultChat,
+          model_name: "iburini",
+        });
+        console.log(audioResponse);
 
         if (!chatResponse) {
           console.log("gaada audio");
@@ -84,10 +96,10 @@ const StarVideo2 = () => {
 
         await addMessage(resultChat, "star", starName);
 
-        if (audioResponse) {
-          const blob = new Blob([audioResponse.data], { type: "audio/mpeg" });
-          const url = URL.createObjectURL(blob);
-          setAudioUrl(url);
+        if (audioResponse && audioResponse.data) {
+          // const blob = new Blob([audioResponse.data], { type: "audio/mpeg" });
+          // const url = URL.createObjectURL(blob);
+          setAudioUrl(audioResponse.data[0].url);
         } else {
           console.error("Invalid audio data format:", audioResponse.data);
         }
