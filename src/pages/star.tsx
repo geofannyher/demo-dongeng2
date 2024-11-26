@@ -68,7 +68,7 @@ const Star = () => {
         const client = await Client.connect("https://talk.hadiwijaya.co/", {
           auth: ["demo", import.meta.env.VITE_PASSWORD],
         });
-        const { data } = await client.predict("/predict", {
+        const { data } = await client.predict("/tts", {
           text: resultChat,
           model_name: "aluna",
         });
@@ -80,7 +80,6 @@ const Star = () => {
         setShowVideo(true);
 
         addMessage(resultChat, "star", starName);
-
         if (data instanceof Array) {
           const url: any = data.map((item) => item.url);
           setAudioUrl(url);
