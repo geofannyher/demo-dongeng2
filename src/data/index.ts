@@ -40,8 +40,8 @@ export const cardData = [
   },
 ];
 
-const model = "gpt-4o";
-const starName = "naya_dongeng";
+const model = "gpt-4o-2024-11-20";
+const starName = "owdi_normal";
 const keyword = "##creepy##";
 const videoTalk =
   // "https://res.cloudinary.com/dcd1jeldi/video/upload/v1731581284/m3qr5uj61gfg5jqskgxw.mp4";
